@@ -22,10 +22,11 @@ First we will need to open and recode the data. I supply the code for this; you 
 
     ```{r}
 library(tidyverse)
-Data8 <- read_tsv("...h_indresp.tab")
+    install.packages("caTools")
+Data8 <- read_tsv("C:/Users/F/Documents/Politics and International relations/Data Analysis in Social Science III/UKDA-6614-tab/tab/ukhls_w8/h_indresp.tab")
 Data8 <- Data8 %>%
         select(pidp, h_age_dv, h_payn_dv, h_gor_dv)
-Stable <- read_tsv("...xwavedat.tab")
+Stable <- read_tsv("C:/Users/F/Documents/Politics and International relations/Data Analysis in Social Science III/UKDA-6614-tab/tab/ukhls_wx/xwavedat.tab")
 Stable <- Stable %>%
         select(pidp, sex_dv, ukborn, plbornc)
 Data <- Data8 %>% left_join(Stable, "pidp")
@@ -67,25 +68,95 @@ Reproduce the following graphs as close as you can. For each graph, write two se
 1. Univariate distribution (20 points).
 
     ```{r}
+    
+Data1 <- Data %>%
+        filter(!is.na(h_payn_dv)) %>%
+        count(h_payn_dv) 
+    
+Data %>%
+  ggplot(aes(x = h_payn_dv, fill = "blue")) +
+  geom_histogram(bins = 100) +
+  xlab("net pay per month") +
+  ylab("number of observations") +
+  theme(legend.position = "none")
+
     ```
 
 2. Line chart (20 points). The lines show the non-parametric association between age and monthly earnings for men and women.
 
     ```{r}
+    sex_data <- Data %>%
+      group_by(sex_dv) %>%
+        rename(age = h_age_dv) %>%
+        rename(sex = sex_dv) %>%
+        rename(net_monthly_pay = h_payn_dv)
+      
+    ggplot(data = sex_data, 
+           mapping = aes(x = h_age_dv, y = h_payn_dv, colour = sex_dv)) +
+      xlab("net pay per month") +
+  ylab("age (in years)") +
+  
+      geom_smooth(data = filter(Data))
     ```
 
 3. Faceted bar chart (20 points).
 
     ```{r}
+    
+    sex_country <- Data %>%
+        rename(Sex = sex_dv) %>%
+  group_by(Sex, placeBorn) %>%
+  summarise(mean_wage = mean(h_payn_dv, na.rm = TRUE)) %>% 
+    filter(!is.na(Sex)) %>%
+    filter(!is.na(placeBorn))
+
+ sex_country %>%   
+    ggplot(aes(x = Sex, y = mean_wage, colour = Sex)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ placeBorn, ncol = 3) +
+    ylim(0,2500) +
+    ylab("Mean Monthly Net Pay")
     ```
 
 4. Heat map (20 points).
 
     ```{r}
+    region_data <- Data %>%
+  group_by(placeBorn, h_gor_dv, h_age_dv) %>%
+  summarise(
+    mean_age = mean(h_age_dv, na.rm = TRUE)) %>% 
+    filter(!is.na(placeBorn)) %>%
+      filter(!is.na(h_gor_dv))
+ 
+ region_data %>%  
+    ggplot(aes(x = h_gor_dv, y = placeBorn, fill = mean_age)) +
+    geom_tile() +
+    xlab("region")+
+    ylab("country of origin") +
+    theme(axis.text.x = element_text(angle = 90))
     
     ```
 
 5. Population pyramid (20 points).
 
     ```{r}
+    
+Data2 <- Data %>%
+        filter(!is.na(h_age_dv)) %>%
+      group_by(sex_dv) %>%
+        count(h_age_dv) %>%
+        rename(age = h_age_dv) %>%
+        rename(sex = sex_dv) %>%
+        rename(population = n)
+    
+Data2$population <- ifelse(Data2$sex == "male",
+                           -1 * Data2$population, Data2$population)    
+    
+ggplot(Data2, aes(x = age, y = population, fill = sex)) +
+  geom_bar(subset = (Data2$sex == "female"), stat = "identity") +
+  geom_bar(subset = (Data2$sex == "male"), stat = "identity") + 
+  coord_flip() +
+  scale_fill_brewer(palette = "Set1") + 
+  theme_bw()
+    
     ```
